@@ -239,21 +239,26 @@
         const dist = (p1, p2) => mag(sub(p1, p2));
         const mid = (p1, p2) => ({ x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 });
 
-        function intersect(p1, p2, p3, p4) {
+        // 두 선분(p1-p2 직선과 p3-p4 선분)의 교점 계산
+        function intersectSeg(p1, p2, p3, p4) {
             const a1 = p2.y - p1.y, b1 = p1.x - p2.x, c1 = a1 * p1.x + b1 * p1.y;
             const a2 = p4.y - p3.y, b2 = p3.x - p4.x, c2 = a2 * p3.x + b2 * p3.y;
             const det = a1 * b2 - a2 * b1;
             if (Math.abs(det) < 1e-6) return null;
-            return { x: (b2 * c1 - b1 * c2) / det, y: (a1 * c2 - a2 * c1) / det };
+            const x = (b2 * c1 - b1 * c2) / det;
+            const y = (a1 * c2 - a2 * c1) / det;
+            const dx = p4.x - p3.x, dy = p4.y - p3.y;
+            const t = Math.abs(dx) > Math.abs(dy) ? (x - p3.x) / dx : (y - p3.y) / dy;
+            if (t >= -0.001 && t <= 1.001) return { x, y };
+            return null;
         }
 
         // 수직이등분선 직선 상의 양 끝점 계산 (외심 O를 100% 통과하도록 보장)
-        function makeBisectorThroughO(m, o, p1, p2, length = 360) {
+        function makeBisectorThroughO(m, o, p1, p2, length = 380) {
             let dir;
             if (dist(m, o) > 1) {
                 dir = norm(sub(o, m));
             } else {
-                // 직각삼각형 등 m과 o가 일치하는 경우 변의 수직 벡터 사용
                 const edge = sub(p2, p1);
                 dir = norm({ x: -edge.y, y: edge.x });
             }
@@ -285,14 +290,12 @@
             M_BC = mid(B, C);
             M_CA = mid(C, A);
 
-            // 외심 O를 해석기하 공식으로 오차 없이 정확히 계산
             O = computeCircumcenter(A, B, C);
             R = dist(O, A);
 
-            // 모든 수직이등분선이 외심 O를 정확히 통과하도록 생성
-            lineAB = makeBisectorThroughO(M_AB, O, A, B, 360);
-            lineBC = makeBisectorThroughO(M_BC, O, B, C, 360);
-            lineCA = makeBisectorThroughO(M_CA, O, C, A, 360);
+            lineAB = makeBisectorThroughO(M_AB, O, A, B, 380);
+            lineBC = makeBisectorThroughO(M_BC, O, B, C, 380);
+            lineCA = makeBisectorThroughO(M_CA, O, C, A, 380);
         }
 
         function updateBanner() {
@@ -355,12 +358,12 @@
             btn1.disabled = isAnimating || step1Done;
             btn2.disabled = isAnimating || step2Done;
             btn3.disabled = isAnimating || step3Done;
-            // 어떤 두 개라도 접으면 외심이 확정되므로 4단계 활성화
             btn4.disabled = isAnimating || step4Done || (count < 2);
             btn5.disabled = isAnimating || step5Done || !step4Done;
         }
 
-        function drawPolygon(pts, fillColor, strokeColor = '#333', dash = []) {
+        function drawPolygon(pts, fillColor, strokeColor = '#333', dash = [], lineWidth = 2) {
+            if (!pts || pts.length < 3) return;
             ctx.beginPath();
             ctx.moveTo(pts[0].x, pts[0].y);
             for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
@@ -368,7 +371,7 @@
             if (fillColor) { ctx.fillStyle = fillColor; ctx.fill(); }
             ctx.setLineDash(dash);
             ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = lineWidth;
             ctx.stroke();
             ctx.setLineDash([]);
         }
@@ -434,13 +437,27 @@
         function drawScene() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const paperColor = '#fffbeb';
-            const shadowColor = 'rgba(59, 130, 246, 0.25)';
+            const shadowColor = 'rgba(59, 130, 246, 0.28)';
 
-            // 배경 종이 삼각형
-            drawPolygon([A, B, C], paperColor, '#334155');
+            // 배경 종이 삼각형 렌더링
+            if (!isAnimating || animData.type !== 'fold') {
+                drawPolygon([A, B, C], paperColor, '#334155');
+            } else {
+                // 접는 애니메이션 중: 바탕 종이(남아 있는 조각)만 온전하게 표시
+                drawPolygon(animData.basePoly, paperColor, '#334155');
+
+                // 접는 기준선(수직이등분선) 가이드선 표시 (외심 O를 정확히 통과)
+                drawLine(animData.axisP1, animData.axisP2, '#93c5fd', [5, 5], 1.6);
+
+                // 삼각형 내부 접는 선분 (M-K) 강조
+                drawLine(animData.axisMid, animData.creaseK, '#2563eb', [], 2.2);
+
+                // 접혀 움직이는 종이 조각 (삼각형 내부에서 잘림 없이 완벽히 보임)
+                drawPolygon(animData.currentFoldPoly, shadowColor, '#1d4ed8', [], 2);
+            }
 
             // 직각삼각형일 때 각 B의 직각 기호
-            if (currentType === 'right') {
+            if (currentType === 'right' && (!isAnimating || animData.type !== 'fold')) {
                 ctx.beginPath();
                 ctx.moveTo(B.x, B.y - 16);
                 ctx.lineTo(B.x + 16, B.y - 16);
@@ -448,14 +465,6 @@
                 ctx.strokeStyle = '#64748b';
                 ctx.lineWidth = 1.6;
                 ctx.stroke();
-            }
-
-            // 접는 중인 애니메이션 레이어 (실제 수직이등분선 축을 따라 접힘)
-            if (isAnimating && animData && animData.type === 'fold') {
-                // 접는 축(수직이등분선)을 실시간 가이드선으로 표시하여 외심 통과를 시각화
-                drawLine(animData.axisP1, animData.axisP2, '#93c5fd', [4, 4], 1.5);
-                // 접혀 움직이는 조각
-                drawPolygon([animData.currentPt, animData.axisMid, animData.axisP1], shadowColor, '#2563eb', [3, 3]);
             }
 
             // 1단계 완료: 변 AB 수직이등분선 (외심 O를 정확히 지남)
@@ -488,7 +497,6 @@
                 const labelOffset = currentType === 'right' ? { x: 12, y: -8 } : { x: 12, y: -4 };
                 drawPoint(O, 'O (외심)', '#ef4444', labelOffset.x, labelOffset.y, 6);
 
-                // 직각삼각형 빗변 중점 강조
                 if (currentType === 'right') {
                     ctx.save();
                     ctx.font = 'bold 12px Pretendard, sans-serif';
@@ -496,7 +504,6 @@
                     ctx.fillText('빗변의 중점!', O.x - 30, O.y + 24);
                     ctx.restore();
                 }
-                // 둔각삼각형 외부 강조
                 if (currentType === 'obtuse') {
                     ctx.save();
                     ctx.font = 'bold 12px Pretendard, sans-serif';
@@ -557,22 +564,55 @@
 
         function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
 
-        // 종이접기 애니메이션: 접는 선(수직이등분선)을 축으로 정확히 대칭 반사
-        function startFoldAnimation(movingPt, targetPt, bisectorLine, onComplete) {
+        // 종이접기 기하 분할: 수직이등분선과 삼각형 변의 교점을 찾아 정확한 접힘 조각 구성
+        function getFoldGeometry(pM, pT, pO) {
+            const m = mid(pM, pT);
+            const edge = sub(pT, pM);
+            const perp = norm({ x: -edge.y, y: edge.x });
+            const p1 = m, p2 = add(m, perp);
+
+            const k1 = intersectSeg(p1, p2, pM, pO);
+            const k2 = intersectSeg(p1, p2, pT, pO);
+
+            let k, basePoly, foldPolyBase;
+            if (k1) {
+                k = k1;
+                // pM 쪽 조각이 삼각형 [pM, m, k]
+                foldPolyBase = [pM, m, k];
+                basePoly = [pT, m, k, pO];
+            } else if (k2) {
+                k = k2;
+                // k가 pT-pO 위에 있는 경우
+                foldPolyBase = [pM, m, k];
+                basePoly = [pT, m, k, pO];
+            } else {
+                // 대체 안전값
+                k = pO;
+                foldPolyBase = [pM, m, k];
+                basePoly = [pT, m, pO];
+            }
+            return { m, k, basePoly, foldPolyBase };
+        }
+
+        function startFoldAnimation(movingPt, targetPt, otherPt, bisectorLine, onComplete) {
             if (isAnimating) return;
             isAnimating = true;
             animProgress = 0;
             updateButtonStates();
 
-            const m = mid(movingPt, targetPt);
+            const geom = getFoldGeometry(movingPt, targetPt, otherPt);
+
             animData = {
                 type: 'fold',
                 origPt: movingPt,
                 targetPt: targetPt,
-                axisMid: m,
+                axisMid: geom.m,
+                creaseK: geom.k,
                 axisP1: bisectorLine.p1,
                 axisP2: bisectorLine.p2,
-                currentPt: { ...movingPt },
+                basePoly: geom.basePoly,
+                foldPolyBase: geom.foldPolyBase,
+                currentFoldPoly: [ { ...movingPt }, geom.m, geom.k ],
                 onComplete: onComplete
             };
             requestAnimationFrame(animateFold);
@@ -595,24 +635,32 @@
             else if (t > 1 && t <= 1.2) factor = 1;
             else factor = easeInOut(1 - (t - 1.2));
 
-            animData.currentPt = {
+            // movingPt가 targetPt로 점진적 이동
+            const curMovingPt = {
                 x: animData.origPt.x + (animData.targetPt.x - animData.origPt.x) * factor,
                 y: animData.origPt.y + (animData.targetPt.y - animData.origPt.y) * factor
             };
+
+            animData.currentFoldPoly = [
+                curMovingPt,
+                animData.axisMid,
+                animData.creaseK
+            ];
+
             drawScene();
             requestAnimationFrame(animateFold);
         }
 
         function doStep1() {
-            startFoldAnimation(A, B, lineAB, () => { step1Done = true; });
+            startFoldAnimation(A, B, C, lineAB, () => { step1Done = true; });
         }
 
         function doStep2() {
-            startFoldAnimation(B, C, lineBC, () => { step2Done = true; });
+            startFoldAnimation(B, C, A, lineBC, () => { step2Done = true; });
         }
 
         function doStep3() {
-            startFoldAnimation(C, A, lineCA, () => { step3Done = true; });
+            startFoldAnimation(C, A, B, lineCA, () => { step3Done = true; });
         }
 
         function doStep4() {
