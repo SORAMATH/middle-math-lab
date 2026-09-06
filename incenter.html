@@ -5,9 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>삼각형 내심 찾기 및 내접원 그리기 - Middle Math Lab</title>
     <style>
+        :root {
+            --primary: #4a90e2;
+            --primary-dark: #357abd;
+            --accent: #27ae60;
+            --bg: #f4f6f8;
+            --card-bg: #ffffff;
+        }
         body {
             font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-            background-color: #f4f6f8;
+            background-color: var(--bg);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -43,15 +50,33 @@
         }
         h1 {
             font-size: 1.5rem;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             color: #2c3e50;
             text-align: center;
         }
         .sub-desc {
-            font-size: 0.9rem;
+            font-size: 0.92rem;
             color: #64748b;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             text-align: center;
+        }
+        /* 내심 위치 개념 배너 */
+        .info-banner {
+            width: 100%;
+            max-width: 650px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
         .container {
             background-color: white;
@@ -100,8 +125,8 @@
             justify-content: center;
         }
         button.action-btn {
-            padding: 10px 15px;
-            font-size: 0.9rem;
+            padding: 10px 14px;
+            font-size: 0.88rem;
             font-weight: 600;
             color: white;
             background-color: #4a90e2;
@@ -146,6 +171,11 @@
     <h1>📐 종이접기로 내심 찾고 내접원 그리기</h1>
     <div class="sub-desc">삼각형의 두 변을 겹쳐 접어 각의 이등분선을 찾고, 내심에서 내접원을 작도해보세요.</div>
 
+    <div class="info-banner">
+        <span>💡</span>
+        <span>모든 삼각형(예각·직각·둔각)에서 세 각의 이등분선은 항상 <strong>삼각형 내부의 한 점(내심 I)</strong>에서 만납니다.</span>
+    </div>
+
     <div class="container">
         <!-- 삼각형 선택 탭 -->
         <div class="triangle-tabs">
@@ -182,7 +212,7 @@
         const sub = (p1, p2) => ({ x: p1.x - p2.x, y: p1.y - p2.y });
         const add = (p1, p2) => ({ x: p1.x + p2.x, y: p1.y + p2.y });
         const mag = (v) => Math.sqrt(v.x * v.x + v.y * v.y);
-        const norm = (v) => { let m = mag(v); return { x: v.x / m, y: v.y / m }; };
+        const norm = (v) => { let m = mag(v); return m < 1e-9 ? { x: 0, y: 0 } : { x: v.x / m, y: v.y / m }; };
         const dot = (v1, v2) => v1.x * v2.x + v1.y * v2.y;
         const scale = (v, s) => ({ x: v.x * s, y: v.y * s });
         const dist = (p1, p2) => mag(sub(p1, p2));
@@ -191,7 +221,7 @@
             const a1 = p2.y - p1.y, b1 = p1.x - p2.x, c1 = a1 * p1.x + b1 * p1.y;
             const a2 = p4.y - p3.y, b2 = p3.x - p4.x, c2 = a2 * p3.x + b2 * p3.y;
             const det = a1 * b2 - a2 * b1;
-            if (det === 0) return null;
+            if (Math.abs(det) < 1e-6) return null;
             return { x: (b2 * c1 - b1 * c2) / det, y: (a1 * c2 - a2 * c1) / det };
         }
 
@@ -203,25 +233,32 @@
             return add(closest, sub(closest, P));
         }
 
-        function project(P, A, B) {
-            const v = sub(B, A);
-            const w = sub(P, A);
+        function project(P, pA, pB) {
+            const v = sub(pB, pA);
+            const w = sub(P, pA);
             const t = dot(w, v) / dot(v, v);
-            return add(A, scale(v, t));
+            return add(pA, scale(v, t));
         }
 
         function calcPoints() {
-            const dirBA = norm(sub(A, B)), dirBC = norm(sub(C, B));
-            D_B = intersect(B, add(B, norm(add(dirBA, dirBC))), A, C);
+            // 변의 길이 a = BC, b = CA, c = AB
+            const a = dist(B, C);
+            const b = dist(C, A);
+            const c = dist(A, B);
+            const perimeter = a + b + c;
 
-            const dirAB = norm(sub(B, A)), dirAC = norm(sub(C, A));
-            D_A = intersect(A, add(A, norm(add(dirAB, dirAC))), B, C);
+            // 내심 I의 정확한 삼선좌표 공식: (aA + bB + cC) / (a + b + c)
+            I = {
+                x: (a * A.x + b * B.x + c * C.x) / perimeter,
+                y: (a * A.y + b * B.y + c * C.y) / perimeter
+            };
 
-            const dirCA = norm(sub(A, C)), dirCB = norm(sub(B, C));
-            D_C = intersect(C, add(C, norm(add(dirCA, dirCB))), A, B);
+            // 각 꼭짓점에서 내심 I를 통과하여 마주보는 대변과 만나는 점 계산 (100% 내심 관통 보장)
+            D_A = intersect(A, I, B, C);
+            D_B = intersect(B, I, A, C);
+            D_C = intersect(C, I, A, B);
 
-            I = intersect(B, D_B, A, D_A);
-            
+            // 세 변에 내린 수선의 발 계산
             H_AB = project(I, A, B);
             H_BC = project(I, B, C);
             H_CA = project(I, C, A);
@@ -254,11 +291,17 @@
         let animData = null; 
         let drawCircleProgress = 0;
 
+        function getDoneStepsCount() {
+            return (step1Done ? 1 : 0) + (step2Done ? 1 : 0) + (step3Done ? 1 : 0);
+        }
+
         function updateButtonStates() {
+            const count = getDoneStepsCount();
             btn1.disabled = isAnimating || step1Done;
             btn2.disabled = isAnimating || step2Done;
             btn3.disabled = isAnimating || step3Done;
-            btn4.disabled = isAnimating || step4Done || !(step1Done && step2Done);
+            // 어떤 두 개라도 접으면 내심 I가 확정되므로 4단계 활성화
+            btn4.disabled = isAnimating || step4Done || (count < 2);
             btn5.disabled = isAnimating || step5Done || !step4Done;
         }
 
@@ -293,12 +336,12 @@
             ctx.fillText(text, pt.x + offsetX, pt.y + offsetY);
         }
 
-        function drawPoint(pt, text, color = '#e74c3c', textOffsetX = -5, textOffsetY = -10) {
+        function drawPoint(pt, text, color = '#e74c3c', textOffsetX = -5, textOffsetY = -10, radius = 4.5) {
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+            ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
             ctx.fillStyle = color;
             ctx.fill();
-            if(text) drawText(pt, text, textOffsetX, textOffsetY, color);
+            if (text) drawText(pt, text, textOffsetX, textOffsetY, color);
         }
 
         function drawRightAngle(pt, dirLine, dirPerp, size = 12) {
@@ -323,6 +366,8 @@
                 drawPolygon([A, B, C], paperColor);
             } else {
                 drawPolygon(animData.basePoly, paperColor);
+                // 접는 축을 실시간 가이드선으로 살짝 표시
+                drawLine(animData.fixed1, animData.fixed2, '#fca5a5', [4, 4], 1.5);
                 drawPolygon([animData.currentPt, animData.fixed1, animData.fixed2], shadowColor, '#555');
             }
 
@@ -336,14 +381,17 @@
                 ctx.stroke();
             }
 
+            // 각의 이등분선 그리기 (내심 I를 100% 관통 보장)
             if (step1Done) drawLine(B, D_B, '#e74c3c', [6,6]);
             if (step2Done) drawLine(A, D_A, '#e74c3c', [6,6]);
             if (step3Done) drawLine(C, D_C, '#e74c3c', [6,6]);
 
-            if (step1Done && step2Done) {
-                drawPoint(I, 'I', '#e74c3c', 10, -5);
+            // 두 번 이상 접었을 때 내심 I 등장
+            if (getDoneStepsCount() >= 2) {
+                drawPoint(I, 'I (내심)', '#e74c3c', 10, -5, 5.5);
             }
 
+            // 4번: 세 변에 수선의 발 내리기
             if (step4Done || (isAnimating && animData.type === 'dropH')) {
                 let curHab, curHbc, curHca;
 
@@ -361,9 +409,9 @@
                 drawLine(I, curHca, '#3498db', [4, 4]);
                 
                 if (step4Done) {
-                    drawPoint(H_AB, 'H₁', '#2980b9', -25, 0);
-                    drawPoint(H_BC, 'H₂', '#2980b9', 0, 20);
-                    drawPoint(H_CA, 'H₃', '#2980b9', 10, -5);
+                    drawPoint(H_AB, 'H₁', '#2980b9', -25, 0, 3.5);
+                    drawPoint(H_BC, 'H₂', '#2980b9', 0, 20, 3.5);
+                    drawPoint(H_CA, 'H₃', '#2980b9', 10, -5, 3.5);
 
                     drawRightAngle(H_AB, norm(sub(B, A)), norm(sub(I, H_AB)));
                     drawRightAngle(H_BC, norm(sub(C, B)), norm(sub(I, H_BC)));
@@ -371,6 +419,7 @@
                 }
             }
 
+            // 5번: 내접원 그리기
             if (step5Done || (isAnimating && animData.type === 'circle')) {
                 const radius = dist(I, H_AB);
                 const angle = step5Done ? Math.PI * 2 : Math.PI * 2 * drawCircleProgress;
@@ -384,7 +433,7 @@
                 if (isAnimating && animData.type === 'circle') {
                     const compassX = I.x + radius * Math.cos(angle);
                     const compassY = I.y + radius * Math.sin(angle);
-                    drawPoint({x: compassX, y: compassY}, '', '#27ae60');
+                    drawPoint({x: compassX, y: compassY}, '✏️', '#27ae60', 8, 4, 5);
                 }
             }
 

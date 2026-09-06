@@ -233,7 +233,7 @@
         const sub = (p1, p2) => ({ x: p1.x - p2.x, y: p1.y - p2.y });
         const add = (p1, p2) => ({ x: p1.x + p2.x, y: p1.y + p2.y });
         const mag = (v) => Math.sqrt(v.x * v.x + v.y * v.y);
-        const norm = (v) => { let m = mag(v); return { x: v.x / m, y: v.y / m }; };
+        const norm = (v) => { let m = mag(v); return m < 1e-9 ? { x: 0, y: 0 } : { x: v.x / m, y: v.y / m }; };
         const dot = (v1, v2) => v1.x * v2.x + v1.y * v2.y;
         const scale = (v, s) => ({ x: v.x * s, y: v.y * s });
         const dist = (p1, p2) => mag(sub(p1, p2));
@@ -247,34 +247,52 @@
             return { x: (b2 * c1 - b1 * c2) / det, y: (a1 * c2 - a2 * c1) / det };
         }
 
-        // 수직이등분선 상의 양 끝 연장선 좌표 계산
-        function getBisectorLine(P1, P2, length = 350) {
-            const m = mid(P1, P2);
-            const dir = sub(P2, P1);
-            // 수직 방향 벡터 (-dy, dx)
-            const perp = norm({ x: -dir.y, y: dir.x });
+        // 수직이등분선 직선 상의 양 끝점 계산 (외심 O를 100% 통과하도록 보장)
+        function makeBisectorThroughO(m, o, p1, p2, length = 360) {
+            let dir;
+            if (dist(m, o) > 1) {
+                dir = norm(sub(o, m));
+            } else {
+                // 직각삼각형 등 m과 o가 일치하는 경우 변의 수직 벡터 사용
+                const edge = sub(p2, p1);
+                dir = norm({ x: -edge.y, y: edge.x });
+            }
             return {
-                p1: add(m, scale(perp, -length)),
-                p2: add(m, scale(perp, length)),
+                p1: add(o, scale(dir, -length)),
+                p2: add(o, scale(dir, length)),
                 mid: m,
-                perp: perp
+                dir: dir,
+                perp: norm({ x: -sub(p2, p1).y, y: sub(p2, p1).x })
             };
         }
 
         let lineAB, lineBC, lineCA;
+
+        // 세 꼭짓점의 수직이등분선 교점으로 외심 O를 정밀 계산
+        function computeCircumcenter(p1, p2, p3) {
+            const d = 2 * (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
+            const ux = ((p1.x * p1.x + p1.y * p1.y) * (p2.y - p3.y) + 
+                        (p2.x * p2.x + p2.y * p2.y) * (p3.y - p1.y) + 
+                        (p3.x * p3.x + p3.y * p3.y) * (p1.y - p2.y)) / d;
+            const uy = ((p1.x * p1.x + p1.y * p1.y) * (p3.x - p2.x) + 
+                        (p2.x * p2.x + p2.y * p2.y) * (p1.x - p3.x) + 
+                        (p3.x * p3.x + p3.y * p3.y) * (p2.x - p1.x)) / d;
+            return { x: ux, y: uy };
+        }
 
         function calcPoints() {
             M_AB = mid(A, B);
             M_BC = mid(B, C);
             M_CA = mid(C, A);
 
-            lineAB = getBisectorLine(A, B, 360);
-            lineBC = getBisectorLine(B, C, 360);
-            lineCA = getBisectorLine(C, A, 360);
-
-            // 외심 O: 두 수직이등분선의 교점
-            O = intersect(lineAB.p1, lineAB.p2, lineBC.p1, lineBC.p2);
+            // 외심 O를 해석기하 공식으로 오차 없이 정확히 계산
+            O = computeCircumcenter(A, B, C);
             R = dist(O, A);
+
+            // 모든 수직이등분선이 외심 O를 정확히 통과하도록 생성
+            lineAB = makeBisectorThroughO(M_AB, O, A, B, 360);
+            lineBC = makeBisectorThroughO(M_BC, O, B, C, 360);
+            lineCA = makeBisectorThroughO(M_CA, O, C, A, 360);
         }
 
         function updateBanner() {
@@ -303,17 +321,14 @@
             document.getElementById(`tab-${type}`).classList.add('active');
 
             if (type === 'acute') {
-                // 예각: 외심이 내부에 안정적으로 자리잡음
                 A = { x: 300, y: 110 };
                 B = { x: 130, y: 360 };
                 C = { x: 470, y: 360 };
             } else if (type === 'right') {
-                // 직각: 각 B가 90도, 빗변 AC의 중점이 외심
                 A = { x: 160, y: 120 };
                 B = { x: 160, y: 360 };
                 C = { x: 480, y: 360 };
             } else if (type === 'obtuse') {
-                // 둔각: 각 A가 둔각, 외심이 변 BC의 아래쪽 외부(y 약 330)에 위치
                 A = { x: 300, y: 140 };
                 B = { x: 150, y: 210 };
                 C = { x: 450, y: 210 };
@@ -331,11 +346,17 @@
         let animData = null;
         let drawCircleProgress = 0;
 
+        function getDoneStepsCount() {
+            return (step1Done ? 1 : 0) + (step2Done ? 1 : 0) + (step3Done ? 1 : 0);
+        }
+
         function updateButtonStates() {
+            const count = getDoneStepsCount();
             btn1.disabled = isAnimating || step1Done;
             btn2.disabled = isAnimating || step2Done;
             btn3.disabled = isAnimating || step3Done;
-            btn4.disabled = isAnimating || step4Done || !(step1Done && step2Done);
+            // 어떤 두 개라도 접으면 외심이 확정되므로 4단계 활성화
+            btn4.disabled = isAnimating || step4Done || (count < 2);
             btn5.disabled = isAnimating || step5Done || !step4Done;
         }
 
@@ -390,7 +411,6 @@
             ctx.stroke();
         }
 
-        // 선분에 중점/길이 같음 기호 (눈금 대시) 표시
         function drawTick(p1, p2, tickCount = 1, size = 6) {
             const m = mid(p1, p2);
             const dir = norm(sub(p2, p1));
@@ -413,7 +433,7 @@
 
         function drawScene() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const paperColor = '#fffbeb'; // 밝은 노랑 한지색
+            const paperColor = '#fffbeb';
             const shadowColor = 'rgba(59, 130, 246, 0.25)';
 
             // 배경 종이 삼각형
@@ -430,13 +450,15 @@
                 ctx.stroke();
             }
 
-            // 접는 중인 애니메이션 레이어
+            // 접는 중인 애니메이션 레이어 (실제 수직이등분선 축을 따라 접힘)
             if (isAnimating && animData && animData.type === 'fold') {
-                // 접혀 포개지는 꼭짓점 조각
-                drawPolygon([animData.currentPt, animData.fixedA, animData.fixedB], shadowColor, '#2563eb', [4, 4]);
+                // 접는 축(수직이등분선)을 실시간 가이드선으로 표시하여 외심 통과를 시각화
+                drawLine(animData.axisP1, animData.axisP2, '#93c5fd', [4, 4], 1.5);
+                // 접혀 움직이는 조각
+                drawPolygon([animData.currentPt, animData.axisMid, animData.axisP1], shadowColor, '#2563eb', [3, 3]);
             }
 
-            // 1단계 완료: 변 AB 수직이등분선
+            // 1단계 완료: 변 AB 수직이등분선 (외심 O를 정확히 지남)
             if (step1Done) {
                 drawLine(lineAB.p1, lineAB.p2, '#3b82f6', [5, 5], 1.8);
                 drawPoint(M_AB, 'M₁', '#2563eb', -26, 4, 3.5);
@@ -445,7 +467,7 @@
                 drawTick(M_AB, B, 1);
             }
 
-            // 2단계 완료: 변 BC 수직이등분선
+            // 2단계 완료: 변 BC 수직이등분선 (외심 O를 정확히 지남)
             if (step2Done) {
                 drawLine(lineBC.p1, lineBC.p2, '#3b82f6', [5, 5], 1.8);
                 drawPoint(M_BC, 'M₂', '#2563eb', -4, 20, 3.5);
@@ -454,17 +476,17 @@
                 drawTick(M_BC, C, 2);
             }
 
-            // 3단계 완료: 변 CA 수직이등분선
+            // 3단계 완료: 변 CA 수직이등분선 (외심 O를 100% 완벽 관통)
             if (step3Done) {
                 drawLine(lineCA.p1, lineCA.p2, '#3b82f6', [5, 5], 1.8);
                 drawPoint(M_CA, 'M₃', '#2563eb', 12, -4, 3.5);
                 drawRightAngle(M_CA, norm(sub(A, C)), lineCA.perp);
             }
 
-            // 외심 O 표시 (1단계, 2단계 완료 시 등장)
-            if (step1Done && step2Done) {
+            // 외심 O 표시 (어떤 2개 단계라도 완료되면 교점 O 등장)
+            if (getDoneStepsCount() >= 2) {
                 const labelOffset = currentType === 'right' ? { x: 12, y: -8 } : { x: 12, y: -4 };
-                drawPoint(O, 'O (외심)', '#ef4444', labelOffset.x, labelOffset.y, 5.5);
+                drawPoint(O, 'O (외심)', '#ef4444', labelOffset.x, labelOffset.y, 6);
 
                 // 직각삼각형 빗변 중점 강조
                 if (currentType === 'right') {
@@ -501,7 +523,6 @@
                 drawLine(O, curC, '#10b981', [], 2.2);
 
                 if (step4Done) {
-                    // 거리 R 라벨 표시
                     const rMidA = mid(O, A);
                     const rMidB = mid(O, B);
                     const rMidC = mid(O, C);
@@ -528,7 +549,7 @@
                 }
             }
 
-            // 꼭짓점 라벨 (항상 최상단)
+            // 꼭짓점 라벨
             drawPoint(A, 'A', '#1e293b', -6, -14, 4);
             drawPoint(B, 'B', '#1e293b', -22, 18, 4);
             drawPoint(C, 'C', '#1e293b', 12, 18, 4);
@@ -536,21 +557,21 @@
 
         function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
 
-        // 꼭짓점을 반대편 꼭짓점으로 겹쳐 접는 애니메이션
-        function startFoldAnimation(movingPt, targetPt, thirdPt, onComplete) {
+        // 종이접기 애니메이션: 접는 선(수직이등분선)을 축으로 정확히 대칭 반사
+        function startFoldAnimation(movingPt, targetPt, bisectorLine, onComplete) {
             if (isAnimating) return;
             isAnimating = true;
             animProgress = 0;
             updateButtonStates();
 
-            // 접는 선은 movingPt와 targetPt의 수직이등분선
             const m = mid(movingPt, targetPt);
             animData = {
                 type: 'fold',
                 origPt: movingPt,
                 targetPt: targetPt,
-                fixedA: m,
-                fixedB: thirdPt,
+                axisMid: m,
+                axisP1: bisectorLine.p1,
+                axisP2: bisectorLine.p2,
                 currentPt: { ...movingPt },
                 onComplete: onComplete
             };
@@ -583,18 +604,17 @@
         }
 
         function doStep1() {
-            startFoldAnimation(A, B, C, () => { step1Done = true; });
+            startFoldAnimation(A, B, lineAB, () => { step1Done = true; });
         }
 
         function doStep2() {
-            startFoldAnimation(B, C, A, () => { step2Done = true; });
+            startFoldAnimation(B, C, lineBC, () => { step2Done = true; });
         }
 
         function doStep3() {
-            startFoldAnimation(C, A, B, () => { step3Done = true; });
+            startFoldAnimation(C, A, lineCA, () => { step3Done = true; });
         }
 
-        // 4단계: 외심에서 세 꼭짓점으로 선분 연결
         function doStep4() {
             if (isAnimating || step4Done) return;
             isAnimating = true;
@@ -618,7 +638,6 @@
             requestAnimationFrame(animateRadii);
         }
 
-        // 5단계: 컴퍼스로 외접원 회전 작도
         function doStep5() {
             if (isAnimating || step5Done) return;
             isAnimating = true;
@@ -650,7 +669,6 @@
             drawScene();
         }
 
-        // 초기 실행
         changeTriangle('acute');
     </script>
 </body>
