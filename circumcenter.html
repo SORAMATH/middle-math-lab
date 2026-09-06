@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>삼각형 외심 찾기 및 외접원 그리기 - Middle Math Lab</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --accent: #10b981;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+            margin: 0;
+        }
+        .top-nav {
+            width: 100%;
+            max-width: 680px;
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 15px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 8px 14px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .back-link:hover {
+            background-color: #edf2f7;
+            color: #2b6cb0;
+            transform: translateX(-2px);
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: #1e293b;
+            text-align: center;
+        }
+        .sub-desc {
+            font-size: 0.92rem;
+            color: #64748b;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        /* 외심 위치 안내 실시간 배너 */
+        .info-banner {
+            width: 100%;
+            max-width: 680px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: all 0.3s ease;
+        }
+        .banner-acute {
+            background-color: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .banner-right {
+            background-color: #fefce8;
+            color: #854d0e;
+            border: 1px solid #fef08a;
+        }
+        .banner-obtuse {
+            background-color: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .container {
+            background-color: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            text-align: center;
+            max-width: 680px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .triangle-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .triangle-tabs button {
+            background-color: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .triangle-tabs button.active {
+            background-color: #1e293b;
+            color: white;
+            border-color: #1e293b;
+        }
+        canvas {
+            background-color: #fafbfc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            max-width: 100%;
+            height: auto;
+        }
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button.action-btn {
+            padding: 10px 14px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: white;
+            background-color: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button.action-btn:hover:not(:disabled) {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+        button.action-btn:disabled {
+            background-color: #cbd5e1;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+        .special-btn {
+            background-color: #10b981 !important;
+        }
+        .special-btn:hover:not(:disabled) {
+            background-color: #059669 !important;
+        }
+        .reset-btn {
+            background-color: #ef4444 !important;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .reset-btn:hover:not(:disabled) {
+            background-color: #dc2626 !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-nav">
+        <a href="index.html" class="back-link">
+            <span>←</span> 교보재 목록으로
+        </a>
+    </div>
+
+    <h1>⭕ 종이접기로 외심 찾고 외접원 그리기</h1>
+    <div class="sub-desc">두 꼭짓점을 겹쳐 접어 수직이등분선을 만들고, 삼각형 모양에 따른 외심의 위치를 확인해보세요.</div>
+
+    <!-- 실시간 외심 위치 배너 -->
+    <div id="infoBanner" class="info-banner banner-acute">
+        <span id="bannerIcon">🟢</span>
+        <span id="bannerText">예각삼각형 : 외심(O)이 삼각형 <strong>내부</strong>에 위치합니다.</span>
+    </div>
+
+    <div class="container">
+        <!-- 삼각형 선택 탭 -->
+        <div class="triangle-tabs">
+            <button id="tab-acute" class="active" onclick="changeTriangle('acute')">예각삼각형</button>
+            <button id="tab-right" onclick="changeTriangle('right')">직각삼각형</button>
+            <button id="tab-obtuse" onclick="changeTriangle('obtuse')">둔각삼각형</button>
+        </div>
+
+        <canvas id="paperCanvas" width="600" height="520"></canvas>
+        
+        <div class="controls">
+            <button id="btn1" class="action-btn" onclick="doStep1()">① A와 B 겹쳐 접기</button>
+            <button id="btn2" class="action-btn" onclick="doStep2()">② B와 C 겹쳐 접기</button>
+            <button id="btn3" class="action-btn" onclick="doStep3()">③ C와 A 겹쳐 접기</button>
+            <button id="btn4" class="action-btn" onclick="doStep4()">④ 세 꼭짓점까지 거리 확인</button>
+            <button id="btn5" class="action-btn special-btn" onclick="doStep5()">⑤ 컴퍼스로 외접원 그리기</button>
+            <button class="action-btn reset-btn" onclick="reset()">처음부터 다시하기</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('paperCanvas');
+        const ctx = canvas.getContext('2d');
+        const btn1 = document.getElementById('btn1');
+        const btn2 = document.getElementById('btn2');
+        const btn3 = document.getElementById('btn3');
+        const btn4 = document.getElementById('btn4');
+        const btn5 = document.getElementById('btn5');
+        const infoBanner = document.getElementById('infoBanner');
+        const bannerIcon = document.getElementById('bannerIcon');
+        const bannerText = document.getElementById('bannerText');
+
+        let A, B, C;
+        let M_AB, M_BC, M_CA; // 세 변의 중점
+        let O; // 외심 (Circumcenter)
+        let R; // 외접원 반지름
+        let currentType = 'acute';
+
+        // 벡터 연산 유틸
+        const sub = (p1, p2) => ({ x: p1.x - p2.x, y: p1.y - p2.y });
+        const add = (p1, p2) => ({ x: p1.x + p2.x, y: p1.y + p2.y });
+        const mag = (v) => Math.sqrt(v.x * v.x + v.y * v.y);
+        const norm = (v) => { let m = mag(v); return { x: v.x / m, y: v.y / m }; };
+        const dot = (v1, v2) => v1.x * v2.x + v1.y * v2.y;
+        const scale = (v, s) => ({ x: v.x * s, y: v.y * s });
+        const dist = (p1, p2) => mag(sub(p1, p2));
+        const mid = (p1, p2) => ({ x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 });
+
+        function intersect(p1, p2, p3, p4) {
+            const a1 = p2.y - p1.y, b1 = p1.x - p2.x, c1 = a1 * p1.x + b1 * p1.y;
+            const a2 = p4.y - p3.y, b2 = p3.x - p4.x, c2 = a2 * p3.x + b2 * p3.y;
+            const det = a1 * b2 - a2 * b1;
+            if (Math.abs(det) < 1e-6) return null;
+            return { x: (b2 * c1 - b1 * c2) / det, y: (a1 * c2 - a2 * c1) / det };
+        }
+
+        // 수직이등분선 상의 양 끝 연장선 좌표 계산
+        function getBisectorLine(P1, P2, length = 350) {
+            const m = mid(P1, P2);
+            const dir = sub(P2, P1);
+            // 수직 방향 벡터 (-dy, dx)
+            const perp = norm({ x: -dir.y, y: dir.x });
+            return {
+                p1: add(m, scale(perp, -length)),
+                p2: add(m, scale(perp, length)),
+                mid: m,
+                perp: perp
+            };
+        }
+
+        let lineAB, lineBC, lineCA;
+
+        function calcPoints() {
+            M_AB = mid(A, B);
+            M_BC = mid(B, C);
+            M_CA = mid(C, A);
+
+            lineAB = getBisectorLine(A, B, 360);
+            lineBC = getBisectorLine(B, C, 360);
+            lineCA = getBisectorLine(C, A, 360);
+
+            // 외심 O: 두 수직이등분선의 교점
+            O = intersect(lineAB.p1, lineAB.p2, lineBC.p1, lineBC.p2);
+            R = dist(O, A);
+        }
+
+        function updateBanner() {
+            if (currentType === 'acute') {
+                infoBanner.className = 'info-banner banner-acute';
+                bannerIcon.textContent = '🟢';
+                bannerText.innerHTML = '예각삼각형 : 세 수직이등분선이 삼각형 <strong>내부</strong>에서 만나 외심(O)이 내부에 위치합니다.';
+            } else if (currentType === 'right') {
+                infoBanner.className = 'info-banner banner-right';
+                bannerIcon.textContent = '🟡';
+                bannerText.innerHTML = '직각삼각형 : 외심(O)이 정확히 <strong>빗변의 중점</strong>에 위치하며, 빗변이 외접원의 <strong>지름</strong>이 됩니다!';
+            } else if (currentType === 'obtuse') {
+                infoBanner.className = 'info-banner banner-obtuse';
+                bannerIcon.textContent = '🔴';
+                bannerText.innerHTML = '둔각삼각형 : 세 수직이등분선이 삼각형 <strong>바깥(외부)</strong>으로 뻗어나가 외심(O)이 외부에 생깁니다!';
+            }
+        }
+
+        function changeTriangle(type) {
+            if (isAnimating) return;
+            currentType = type;
+
+            document.getElementById('tab-acute').classList.remove('active');
+            document.getElementById('tab-right').classList.remove('active');
+            document.getElementById('tab-obtuse').classList.remove('active');
+            document.getElementById(`tab-${type}`).classList.add('active');
+
+            if (type === 'acute') {
+                // 예각: 외심이 내부에 안정적으로 자리잡음
+                A = { x: 300, y: 110 };
+                B = { x: 130, y: 360 };
+                C = { x: 470, y: 360 };
+            } else if (type === 'right') {
+                // 직각: 각 B가 90도, 빗변 AC의 중점이 외심
+                A = { x: 160, y: 120 };
+                B = { x: 160, y: 360 };
+                C = { x: 480, y: 360 };
+            } else if (type === 'obtuse') {
+                // 둔각: 각 A가 둔각, 외심이 변 BC의 아래쪽 외부(y 약 330)에 위치
+                A = { x: 300, y: 140 };
+                B = { x: 150, y: 210 };
+                C = { x: 450, y: 210 };
+            }
+
+            calcPoints();
+            updateBanner();
+            reset();
+        }
+
+        let step1Done = false, step2Done = false, step3Done = false;
+        let step4Done = false, step5Done = false;
+        let isAnimating = false;
+        let animProgress = 0;
+        let animData = null;
+        let drawCircleProgress = 0;
+
+        function updateButtonStates() {
+            btn1.disabled = isAnimating || step1Done;
+            btn2.disabled = isAnimating || step2Done;
+            btn3.disabled = isAnimating || step3Done;
+            btn4.disabled = isAnimating || step4Done || !(step1Done && step2Done);
+            btn5.disabled = isAnimating || step5Done || !step4Done;
+        }
+
+        function drawPolygon(pts, fillColor, strokeColor = '#333', dash = []) {
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.closePath();
+            if (fillColor) { ctx.fillStyle = fillColor; ctx.fill(); }
+            ctx.setLineDash(dash);
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawLine(p1, p2, color = '#2563eb', dash = [6, 6], width = 2) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = color;
+            ctx.setLineDash(dash);
+            ctx.lineWidth = width;
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawText(pt, text, offsetX, offsetY, color = '#1e293b', font = 'bold 16px Pretendard, sans-serif') {
+            ctx.fillStyle = color;
+            ctx.font = font;
+            ctx.fillText(text, pt.x + offsetX, pt.y + offsetY);
+        }
+
+        function drawPoint(pt, text, color = '#dc2626', textOffsetX = -5, textOffsetY = -10, radius = 4.5) {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            if (text) drawText(pt, text, textOffsetX, textOffsetY, color);
+        }
+
+        function drawRightAngle(pt, dirLine, dirPerp, size = 12, color = '#2563eb') {
+            ctx.beginPath();
+            const p1 = add(pt, scale(dirLine, size));
+            const p2 = add(p1, scale(dirPerp, size));
+            const p3 = add(pt, scale(dirPerp, size));
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.6;
+            ctx.stroke();
+        }
+
+        // 선분에 중점/길이 같음 기호 (눈금 대시) 표시
+        function drawTick(p1, p2, tickCount = 1, size = 6) {
+            const m = mid(p1, p2);
+            const dir = norm(sub(p2, p1));
+            const perp = { x: -dir.y, y: dir.x };
+            ctx.beginPath();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.8;
+            if (tickCount === 1) {
+                ctx.moveTo(m.x - perp.x * size, m.y - perp.y * size);
+                ctx.lineTo(m.x + perp.x * size, m.y + perp.y * size);
+            } else if (tickCount === 2) {
+                const off = scale(dir, 3);
+                ctx.moveTo(m.x - off.x - perp.x * size, m.y - off.y - perp.y * size);
+                ctx.lineTo(m.x - off.x + perp.x * size, m.y - off.y + perp.y * size);
+                ctx.moveTo(m.x + off.x - perp.x * size, m.y + off.y - perp.y * size);
+                ctx.lineTo(m.x + off.x + perp.x * size, m.y + off.y + perp.y * size);
+            }
+            ctx.stroke();
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const paperColor = '#fffbeb'; // 밝은 노랑 한지색
+            const shadowColor = 'rgba(59, 130, 246, 0.25)';
+
+            // 배경 종이 삼각형
+            drawPolygon([A, B, C], paperColor, '#334155');
+
+            // 직각삼각형일 때 각 B의 직각 기호
+            if (currentType === 'right') {
+                ctx.beginPath();
+                ctx.moveTo(B.x, B.y - 16);
+                ctx.lineTo(B.x + 16, B.y - 16);
+                ctx.lineTo(B.x + 16, B.y);
+                ctx.strokeStyle = '#64748b';
+                ctx.lineWidth = 1.6;
+                ctx.stroke();
+            }
+
+            // 접는 중인 애니메이션 레이어
+            if (isAnimating && animData && animData.type === 'fold') {
+                // 접혀 포개지는 꼭짓점 조각
+                drawPolygon([animData.currentPt, animData.fixedA, animData.fixedB], shadowColor, '#2563eb', [4, 4]);
+            }
+
+            // 1단계 완료: 변 AB 수직이등분선
+            if (step1Done) {
+                drawLine(lineAB.p1, lineAB.p2, '#3b82f6', [5, 5], 1.8);
+                drawPoint(M_AB, 'M₁', '#2563eb', -26, 4, 3.5);
+                drawRightAngle(M_AB, norm(sub(B, A)), lineAB.perp);
+                drawTick(A, M_AB, 1);
+                drawTick(M_AB, B, 1);
+            }
+
+            // 2단계 완료: 변 BC 수직이등분선
+            if (step2Done) {
+                drawLine(lineBC.p1, lineBC.p2, '#3b82f6', [5, 5], 1.8);
+                drawPoint(M_BC, 'M₂', '#2563eb', -4, 20, 3.5);
+                drawRightAngle(M_BC, norm(sub(C, B)), lineBC.perp);
+                drawTick(B, M_BC, 2);
+                drawTick(M_BC, C, 2);
+            }
+
+            // 3단계 완료: 변 CA 수직이등분선
+            if (step3Done) {
+                drawLine(lineCA.p1, lineCA.p2, '#3b82f6', [5, 5], 1.8);
+                drawPoint(M_CA, 'M₃', '#2563eb', 12, -4, 3.5);
+                drawRightAngle(M_CA, norm(sub(A, C)), lineCA.perp);
+            }
+
+            // 외심 O 표시 (1단계, 2단계 완료 시 등장)
+            if (step1Done && step2Done) {
+                const labelOffset = currentType === 'right' ? { x: 12, y: -8 } : { x: 12, y: -4 };
+                drawPoint(O, 'O (외심)', '#ef4444', labelOffset.x, labelOffset.y, 5.5);
+
+                // 직각삼각형 빗변 중점 강조
+                if (currentType === 'right') {
+                    ctx.save();
+                    ctx.font = 'bold 12px Pretendard, sans-serif';
+                    ctx.fillStyle = '#b45309';
+                    ctx.fillText('빗변의 중점!', O.x - 30, O.y + 24);
+                    ctx.restore();
+                }
+                // 둔각삼각형 외부 강조
+                if (currentType === 'obtuse') {
+                    ctx.save();
+                    ctx.font = 'bold 12px Pretendard, sans-serif';
+                    ctx.fillStyle = '#dc2626';
+                    ctx.fillText('삼각형 외부!', O.x + 14, O.y + 14);
+                    ctx.restore();
+                }
+            }
+
+            // 4단계: 외심에서 세 꼭짓점으로 거리 확인 (반지름 R)
+            if (step4Done || (isAnimating && animData && animData.type === 'radii')) {
+                let curA, curB, curC;
+                if (isAnimating && animData.type === 'radii') {
+                    const t = easeInOut(animProgress);
+                    curA = { x: O.x + (A.x - O.x) * t, y: O.y + (A.y - O.y) * t };
+                    curB = { x: O.x + (B.x - O.x) * t, y: O.y + (B.y - O.y) * t };
+                    curC = { x: O.x + (C.x - O.x) * t, y: O.y + (C.y - O.y) * t };
+                } else {
+                    curA = A; curB = B; curC = C;
+                }
+
+                drawLine(O, curA, '#10b981', [], 2.2);
+                drawLine(O, curB, '#10b981', [], 2.2);
+                drawLine(O, curC, '#10b981', [], 2.2);
+
+                if (step4Done) {
+                    // 거리 R 라벨 표시
+                    const rMidA = mid(O, A);
+                    const rMidB = mid(O, B);
+                    const rMidC = mid(O, C);
+                    drawText(rMidA, 'R', 8, -4, '#059669', 'bold 14px Pretendard, sans-serif');
+                    drawText(rMidB, 'R', -18, 10, '#059669', 'bold 14px Pretendard, sans-serif');
+                    drawText(rMidC, 'R', 10, 10, '#059669', 'bold 14px Pretendard, sans-serif');
+                }
+            }
+
+            // 5단계: 컴퍼스로 외접원 그리기
+            if (step5Done || (isAnimating && animData && animData.type === 'circle')) {
+                const angle = step5Done ? Math.PI * 2 : Math.PI * 2 * drawCircleProgress;
+
+                ctx.beginPath();
+                ctx.arc(O.x, O.y, R, 0, angle);
+                ctx.strokeStyle = '#059669';
+                ctx.lineWidth = 2.8;
+                ctx.stroke();
+
+                if (isAnimating && animData.type === 'circle') {
+                    const compassX = O.x + R * Math.cos(angle);
+                    const compassY = O.y + R * Math.sin(angle);
+                    drawPoint({ x: compassX, y: compassY }, '✏️', '#059669', 8, 4, 5);
+                }
+            }
+
+            // 꼭짓점 라벨 (항상 최상단)
+            drawPoint(A, 'A', '#1e293b', -6, -14, 4);
+            drawPoint(B, 'B', '#1e293b', -22, 18, 4);
+            drawPoint(C, 'C', '#1e293b', 12, 18, 4);
+        }
+
+        function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+
+        // 꼭짓점을 반대편 꼭짓점으로 겹쳐 접는 애니메이션
+        function startFoldAnimation(movingPt, targetPt, thirdPt, onComplete) {
+            if (isAnimating) return;
+            isAnimating = true;
+            animProgress = 0;
+            updateButtonStates();
+
+            // 접는 선은 movingPt와 targetPt의 수직이등분선
+            const m = mid(movingPt, targetPt);
+            animData = {
+                type: 'fold',
+                origPt: movingPt,
+                targetPt: targetPt,
+                fixedA: m,
+                fixedB: thirdPt,
+                currentPt: { ...movingPt },
+                onComplete: onComplete
+            };
+            requestAnimationFrame(animateFold);
+        }
+
+        function animateFold() {
+            animProgress += 0.015;
+            let t = animProgress;
+
+            if (t > 2.2) {
+                isAnimating = false;
+                if (animData.onComplete) animData.onComplete();
+                updateButtonStates();
+                drawScene();
+                return;
+            }
+
+            let factor = 0;
+            if (t <= 1) factor = easeInOut(t);
+            else if (t > 1 && t <= 1.2) factor = 1;
+            else factor = easeInOut(1 - (t - 1.2));
+
+            animData.currentPt = {
+                x: animData.origPt.x + (animData.targetPt.x - animData.origPt.x) * factor,
+                y: animData.origPt.y + (animData.targetPt.y - animData.origPt.y) * factor
+            };
+            drawScene();
+            requestAnimationFrame(animateFold);
+        }
+
+        function doStep1() {
+            startFoldAnimation(A, B, C, () => { step1Done = true; });
+        }
+
+        function doStep2() {
+            startFoldAnimation(B, C, A, () => { step2Done = true; });
+        }
+
+        function doStep3() {
+            startFoldAnimation(C, A, B, () => { step3Done = true; });
+        }
+
+        // 4단계: 외심에서 세 꼭짓점으로 선분 연결
+        function doStep4() {
+            if (isAnimating || step4Done) return;
+            isAnimating = true;
+            animProgress = 0;
+            updateButtonStates();
+
+            animData = { type: 'radii' };
+
+            function animateRadii() {
+                animProgress += 0.025;
+                if (animProgress > 1) {
+                    isAnimating = false;
+                    step4Done = true;
+                    updateButtonStates();
+                    drawScene();
+                    return;
+                }
+                drawScene();
+                requestAnimationFrame(animateRadii);
+            }
+            requestAnimationFrame(animateRadii);
+        }
+
+        // 5단계: 컴퍼스로 외접원 회전 작도
+        function doStep5() {
+            if (isAnimating || step5Done) return;
+            isAnimating = true;
+            drawCircleProgress = 0;
+            updateButtonStates();
+
+            animData = { type: 'circle' };
+
+            function animateCircle() {
+                drawCircleProgress += 0.012;
+                if (drawCircleProgress > 1) {
+                    isAnimating = false;
+                    step5Done = true;
+                    updateButtonStates();
+                    drawScene();
+                    return;
+                }
+                drawScene();
+                requestAnimationFrame(animateCircle);
+            }
+            requestAnimationFrame(animateCircle);
+        }
+
+        function reset() {
+            if (isAnimating) return;
+            step1Done = false; step2Done = false; step3Done = false;
+            step4Done = false; step5Done = false;
+            updateButtonStates();
+            drawScene();
+        }
+
+        // 초기 실행
+        changeTriangle('acute');
+    </script>
+</body>
+</html>
