@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>삼각형 내심 찾기 및 내접원 그리기 - Middle Math Lab</title>
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #f4f6f8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+            margin: 0;
+        }
+        .top-nav {
+            width: 100%;
+            max-width: 650px;
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 15px;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 8px 14px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .back-link:hover {
+            background-color: #edf2f7;
+            color: #2b6cb0;
+            transform: translateX(-2px);
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        .sub-desc {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .container {
+            background-color: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            text-align: center;
+            max-width: 650px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .triangle-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .triangle-tabs button {
+            background-color: #f1f3f5;
+            color: #495057;
+            border: 1px solid #ced4da;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .triangle-tabs button.active {
+            background-color: #2c3e50;
+            color: white;
+            border-color: #2c3e50;
+        }
+        canvas {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            max-width: 100%;
+            height: auto;
+        }
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button.action-btn {
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: white;
+            background-color: #4a90e2;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button.action-btn:hover:not(:disabled) {
+            background-color: #357abd;
+            transform: translateY(-1px);
+        }
+        button.action-btn:disabled {
+            background-color: #cbd5e1;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+        .special-btn {
+            background-color: #27ae60 !important;
+        }
+        .special-btn:hover:not(:disabled) {
+            background-color: #219653 !important;
+        }
+        .reset-btn {
+            background-color: #e74c3c !important;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .reset-btn:hover:not(:disabled) {
+            background-color: #c0392b !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-nav">
+        <a href="index.html" class="back-link">
+            <span>←</span> 교보재 목록으로
+        </a>
+    </div>
+
+    <h1>📐 종이접기로 내심 찾고 내접원 그리기</h1>
+    <div class="sub-desc">삼각형의 두 변을 겹쳐 접어 각의 이등분선을 찾고, 내심에서 내접원을 작도해보세요.</div>
+
+    <div class="container">
+        <!-- 삼각형 선택 탭 -->
+        <div class="triangle-tabs">
+            <button id="tab-acute" class="active" onclick="changeTriangle('acute')">예각삼각형</button>
+            <button id="tab-right" onclick="changeTriangle('right')">직각삼각형</button>
+            <button id="tab-obtuse" onclick="changeTriangle('obtuse')">둔각삼각형</button>
+        </div>
+
+        <canvas id="paperCanvas" width="500" height="400"></canvas>
+        
+        <div class="controls">
+            <button id="btn1" class="action-btn" onclick="doStep1()">① AB, BC 겹치기</button>
+            <button id="btn2" class="action-btn" onclick="doStep2()">② AB, AC 겹치기</button>
+            <button id="btn3" class="action-btn" onclick="doStep3()">③ AC, BC 겹치기</button>
+            <button id="btn4" class="action-btn" onclick="doStep4()">④ 세 변에 수선의 발 내리기</button>
+            <button id="btn5" class="action-btn special-btn" onclick="doStep5()">⑤ 컴퍼스로 내접원 그리기</button>
+            <button class="action-btn reset-btn" onclick="reset()">처음부터 다시하기</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('paperCanvas');
+        const ctx = canvas.getContext('2d');
+        const btn1 = document.getElementById('btn1');
+        const btn2 = document.getElementById('btn2');
+        const btn3 = document.getElementById('btn3');
+        const btn4 = document.getElementById('btn4');
+        const btn5 = document.getElementById('btn5');
+
+        let A, B, C;
+        let D_A, D_B, D_C, I;
+        let H_AB, H_BC, H_CA;
+
+        const sub = (p1, p2) => ({ x: p1.x - p2.x, y: p1.y - p2.y });
+        const add = (p1, p2) => ({ x: p1.x + p2.x, y: p1.y + p2.y });
+        const mag = (v) => Math.sqrt(v.x * v.x + v.y * v.y);
+        const norm = (v) => { let m = mag(v); return { x: v.x / m, y: v.y / m }; };
+        const dot = (v1, v2) => v1.x * v2.x + v1.y * v2.y;
+        const scale = (v, s) => ({ x: v.x * s, y: v.y * s });
+        const dist = (p1, p2) => mag(sub(p1, p2));
+
+        function intersect(p1, p2, p3, p4) {
+            const a1 = p2.y - p1.y, b1 = p1.x - p2.x, c1 = a1 * p1.x + b1 * p1.y;
+            const a2 = p4.y - p3.y, b2 = p3.x - p4.x, c2 = a2 * p3.x + b2 * p3.y;
+            const det = a1 * b2 - a2 * b1;
+            if (det === 0) return null;
+            return { x: (b2 * c1 - b1 * c2) / det, y: (a1 * c2 - a2 * c1) / det };
+        }
+
+        function reflect(P, L1, L2) {
+            const L = sub(L2, L1);
+            const V = sub(P, L1);
+            const proj = scale(L, dot(V, L) / dot(L, L));
+            const closest = add(L1, proj);
+            return add(closest, sub(closest, P));
+        }
+
+        function project(P, A, B) {
+            const v = sub(B, A);
+            const w = sub(P, A);
+            const t = dot(w, v) / dot(v, v);
+            return add(A, scale(v, t));
+        }
+
+        function calcPoints() {
+            const dirBA = norm(sub(A, B)), dirBC = norm(sub(C, B));
+            D_B = intersect(B, add(B, norm(add(dirBA, dirBC))), A, C);
+
+            const dirAB = norm(sub(B, A)), dirAC = norm(sub(C, A));
+            D_A = intersect(A, add(A, norm(add(dirAB, dirAC))), B, C);
+
+            const dirCA = norm(sub(A, C)), dirCB = norm(sub(B, C));
+            D_C = intersect(C, add(C, norm(add(dirCA, dirCB))), A, B);
+
+            I = intersect(B, D_B, A, D_A);
+            
+            H_AB = project(I, A, B);
+            H_BC = project(I, B, C);
+            H_CA = project(I, C, A);
+        }
+
+        function changeTriangle(type) {
+            if (isAnimating) return;
+
+            document.getElementById('tab-acute').classList.remove('active');
+            document.getElementById('tab-right').classList.remove('active');
+            document.getElementById('tab-obtuse').classList.remove('active');
+            document.getElementById(`tab-${type}`).classList.add('active');
+
+            if (type === 'acute') {
+                A = { x: 200, y: 80 }; B = { x: 50, y: 350 }; C = { x: 450, y: 350 };
+            } else if (type === 'right') {
+                A = { x: 120, y: 80 }; B = { x: 120, y: 350 }; C = { x: 420, y: 350 }; 
+            } else if (type === 'obtuse') {
+                A = { x: 80, y: 150 }; B = { x: 220, y: 350 }; C = { x: 460, y: 350 }; 
+            }
+
+            calcPoints();
+            reset();
+        }
+
+        let step1Done = false, step2Done = false, step3Done = false;
+        let step4Done = false, step5Done = false;
+        let isAnimating = false;
+        let animProgress = 0;
+        let animData = null; 
+        let drawCircleProgress = 0;
+
+        function updateButtonStates() {
+            btn1.disabled = isAnimating || step1Done;
+            btn2.disabled = isAnimating || step2Done;
+            btn3.disabled = isAnimating || step3Done;
+            btn4.disabled = isAnimating || step4Done || !(step1Done && step2Done);
+            btn5.disabled = isAnimating || step5Done || !step4Done;
+        }
+
+        function drawPolygon(pts, fillColor, strokeColor = '#333', dash = []) {
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.closePath();
+            if (fillColor) { ctx.fillStyle = fillColor; ctx.fill(); }
+            ctx.setLineDash(dash);
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawLine(p1, p2, color = '#e74c3c', dash = [6, 6], width = 2.5) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = color;
+            ctx.setLineDash(dash);
+            ctx.lineWidth = width;
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawText(pt, text, offsetX, offsetY, color = '#000') {
+            ctx.fillStyle = color;
+            ctx.font = '16px Pretendard, sans-serif';
+            ctx.fontWeight = 'bold';
+            ctx.fillText(text, pt.x + offsetX, pt.y + offsetY);
+        }
+
+        function drawPoint(pt, text, color = '#e74c3c', textOffsetX = -5, textOffsetY = -10) {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            if(text) drawText(pt, text, textOffsetX, textOffsetY, color);
+        }
+
+        function drawRightAngle(pt, dirLine, dirPerp, size = 12) {
+            ctx.beginPath();
+            const p1 = add(pt, scale(dirLine, size));
+            const p2 = add(p1, scale(dirPerp, size));
+            const p3 = add(pt, scale(dirPerp, size));
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.strokeStyle = '#2980b9';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const paperColor = '#fff9d6'; 
+            const shadowColor = 'rgba(0, 0, 0, 0.2)'; 
+
+            if (!isAnimating || animData.type !== 'fold') {
+                drawPolygon([A, B, C], paperColor);
+            } else {
+                drawPolygon(animData.basePoly, paperColor);
+                drawPolygon([animData.currentPt, animData.fixed1, animData.fixed2], shadowColor, '#555');
+            }
+
+            if(A.x === B.x && B.y === C.y && (!isAnimating || animData.type !== 'fold')) {
+                ctx.beginPath();
+                ctx.moveTo(B.x, B.y - 15);
+                ctx.lineTo(B.x + 15, B.y - 15);
+                ctx.lineTo(B.x + 15, B.y);
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            if (step1Done) drawLine(B, D_B, '#e74c3c', [6,6]);
+            if (step2Done) drawLine(A, D_A, '#e74c3c', [6,6]);
+            if (step3Done) drawLine(C, D_C, '#e74c3c', [6,6]);
+
+            if (step1Done && step2Done) {
+                drawPoint(I, 'I', '#e74c3c', 10, -5);
+            }
+
+            if (step4Done || (isAnimating && animData.type === 'dropH')) {
+                let curHab, curHbc, curHca;
+
+                if (isAnimating && animData.type === 'dropH') {
+                    const t = easeInOut(animProgress);
+                    curHab = { x: I.x + (H_AB.x - I.x) * t, y: I.y + (H_AB.y - I.y) * t };
+                    curHbc = { x: I.x + (H_BC.x - I.x) * t, y: I.y + (H_BC.y - I.y) * t };
+                    curHca = { x: I.x + (H_CA.x - I.x) * t, y: I.y + (H_CA.y - I.y) * t };
+                } else {
+                    curHab = H_AB; curHbc = H_BC; curHca = H_CA;
+                }
+
+                drawLine(I, curHab, '#3498db', [4, 4]);
+                drawLine(I, curHbc, '#3498db', [4, 4]);
+                drawLine(I, curHca, '#3498db', [4, 4]);
+                
+                if (step4Done) {
+                    drawPoint(H_AB, 'H₁', '#2980b9', -25, 0);
+                    drawPoint(H_BC, 'H₂', '#2980b9', 0, 20);
+                    drawPoint(H_CA, 'H₃', '#2980b9', 10, -5);
+
+                    drawRightAngle(H_AB, norm(sub(B, A)), norm(sub(I, H_AB)));
+                    drawRightAngle(H_BC, norm(sub(C, B)), norm(sub(I, H_BC)));
+                    drawRightAngle(H_CA, norm(sub(A, C)), norm(sub(I, H_CA)));
+                }
+            }
+
+            if (step5Done || (isAnimating && animData.type === 'circle')) {
+                const radius = dist(I, H_AB);
+                const angle = step5Done ? Math.PI * 2 : Math.PI * 2 * drawCircleProgress;
+                
+                ctx.beginPath();
+                ctx.arc(I.x, I.y, radius, 0, angle);
+                ctx.strokeStyle = '#27ae60'; 
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                if (isAnimating && animData.type === 'circle') {
+                    const compassX = I.x + radius * Math.cos(angle);
+                    const compassY = I.y + radius * Math.sin(angle);
+                    drawPoint({x: compassX, y: compassY}, '', '#27ae60');
+                }
+            }
+
+            drawText(A, 'A', -5, -15);
+            drawText(B, 'B', -25, 20);
+            drawText(C, 'C', 10, 20);
+        }
+
+        function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+
+        function startFoldAnimation(movingOrig, fixed1, fixed2, basePoly, onComplete) {
+            if (isAnimating) return;
+            isAnimating = true;
+            animProgress = 0;
+            updateButtonStates();
+
+            const targetPt = reflect(movingOrig, fixed1, fixed2);
+            animData = {
+                type: 'fold', origPt: movingOrig, targetPt: targetPt,
+                fixed1: fixed1, fixed2: fixed2,
+                basePoly: basePoly, currentPt: { ...movingOrig },
+                onComplete: onComplete
+            };
+            requestAnimationFrame(animateFold);
+        }
+
+        function animateFold() {
+            animProgress += 0.012; 
+            let t = animProgress;
+
+            if (t > 2.2) {
+                isAnimating = false;
+                if (animData.onComplete) animData.onComplete();
+                updateButtonStates();
+                drawScene();
+                return;
+            }
+
+            let factor = 0;
+            if (t <= 1) factor = easeInOut(t); 
+            else if (t > 1 && t <= 1.2) factor = 1; 
+            else factor = easeInOut(1 - (t - 1.2)); 
+
+            animData.currentPt = {
+                x: animData.origPt.x + (animData.targetPt.x - animData.origPt.x) * factor,
+                y: animData.origPt.y + (animData.targetPt.y - animData.origPt.y) * factor
+            };
+            drawScene();
+            requestAnimationFrame(animateFold);
+        }
+
+        function doStep4() {
+            if (isAnimating || step4Done) return;
+            isAnimating = true;
+            animProgress = 0;
+            updateButtonStates();
+
+            animData = { type: 'dropH' };
+
+            function animateDrop() {
+                animProgress += 0.025;
+                if (animProgress > 1) {
+                    isAnimating = false;
+                    step4Done = true;
+                    updateButtonStates();
+                    drawScene();
+                    return;
+                }
+                drawScene();
+                requestAnimationFrame(animateDrop);
+            }
+            requestAnimationFrame(animateDrop);
+        }
+
+        function doStep5() {
+            if (isAnimating || step5Done) return;
+            isAnimating = true;
+            drawCircleProgress = 0;
+            updateButtonStates();
+
+            animData = { type: 'circle' };
+
+            function animateCircle() {
+                drawCircleProgress += 0.012; 
+                if (drawCircleProgress > 1) {
+                    isAnimating = false;
+                    step5Done = true;
+                    updateButtonStates();
+                    drawScene();
+                    return;
+                }
+                drawScene();
+                requestAnimationFrame(animateCircle);
+            }
+            requestAnimationFrame(animateCircle);
+        }
+
+        function doStep1() { startFoldAnimation(A, B, D_B, [B, C, D_B], () => { step1Done = true; }); }
+        function doStep2() { startFoldAnimation(B, A, D_A, [A, C, D_A], () => { step2Done = true; }); }
+        function doStep3() { startFoldAnimation(A, C, D_C, [B, C, D_C], () => { step3Done = true; }); }
+
+        function reset() {
+            if(isAnimating) return;
+            step1Done = false; step2Done = false; step3Done = false;
+            step4Done = false; step5Done = false;
+            updateButtonStates();
+            drawScene();
+        }
+
+        changeTriangle('acute');
+    </script>
+</body>
+</html>

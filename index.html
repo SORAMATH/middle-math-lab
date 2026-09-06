@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Middle Math Lab - 중학교 수학 인터랙티브 교보재</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --secondary: #10b981;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 48px 20px 40px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header-badge {
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: #93c5fd;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 14px;
+        }
+        header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+        }
+        header p {
+            font-size: 1.05rem;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        main {
+            max-width: 1100px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 30px 20px 60px;
+            flex: 1;
+        }
+        /* 필터 탭 */
+        .filter-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 35px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            background: white;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .filter-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        /* 교보재 그리드 */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
+        }
+        .card-visual {
+            height: 160px;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            border-bottom: 1px solid #e2e8f0;
+            position: relative;
+        }
+        .card-visual.disabled-visual {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            filter: grayscale(0.5);
+            opacity: 0.8;
+        }
+        .card-content {
+            padding: 22px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-tags {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .tag {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .tag-grade2 { background: #e0f2fe; color: #0369a1; }
+        .tag-ready { background: #dcfce7; color: #15803d; }
+        .tag-soon { background: #f1f5f9; color: #64748b; }
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+        .card-desc {
+            font-size: 0.92rem;
+            color: var(--text-sub);
+            margin-bottom: 20px;
+            flex: 1;
+        }
+        .card-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 16px;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            font-size: 0.92rem;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .card:hover .card-action {
+            background: var(--primary-dark);
+        }
+        .card.disabled {
+            cursor: not-allowed;
+            opacity: 0.75;
+        }
+        .card.disabled:hover {
+            transform: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border-color: #e2e8f0;
+        }
+        .card.disabled .card-action {
+            background: #cbd5e1;
+            color: #64748b;
+        }
+        footer {
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 24px 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <span class="header-badge">✨ 중학교 수학 수업 혁신 교보재</span>
+        <h1>📐 Middle Math Lab</h1>
+        <p>직접 종이를 접고 자르고 움직이며 수학적 원리를 스스로 발견하는 인터랙티브 웹 교보재 실험실입니다.</p>
+    </header>
+
+    <main>
+        <!-- 학년 필터 -->
+        <div class="filter-tabs">
+            <button class="filter-btn active" onclick="filterGrade('all', this)">전체 보기</button>
+            <button class="filter-btn" onclick="filterGrade('grade1', this)">중1 수학</button>
+            <button class="filter-btn" onclick="filterGrade('grade2', this)">중2 수학</button>
+            <button class="filter-btn" onclick="filterGrade('grade3', this)">중3 수학</button>
+        </div>
+
+        <!-- 교보재 카드 그리드 -->
+        <div class="cards-grid">
+
+            <!-- 카드 1: 삼각형의 내심 -->
+            <a href="incenter.html" class="card" data-grade="grade2">
+                <div class="card-visual">
+                    <span>📐</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-tags">
+                        <span class="tag tag-grade2">중2-2 기하</span>
+                        <span class="tag tag-ready">체험 가능</span>
+                    </div>
+                    <h2 class="card-title">종이접기로 내심 찾고 내접원 그리기</h2>
+                    <p class="card-desc">
+                        삼각형의 두 변을 겹쳐 접으며 각의 이등분선의 교점인 내심을 발견하고, 세 변에 수선의 발을 내려 컴퍼스로 내접원을 작도합니다.
+                    </p>
+                    <div class="card-action">
+                        실행하기 <span>→</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- 카드 2: 외심 (Coming Soon) -->
+            <div class="card disabled" data-grade="grade2">
+                <div class="card-visual disabled-visual">
+                    <span>⭕</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-tags">
+                        <span class="tag tag-grade2">중2-2 기하</span>
+                        <span class="tag tag-soon">준비 중</span>
+                    </div>
+                    <h2 class="card-title">수직이등분선으로 외심과 외접원 탐구</h2>
+                    <p class="card-desc">
+                        세 변의 수직이등분선이 만나는 외심을 찾고, 예각·직각·둔각삼각형에서 외심의 위치 변화와 세 꼭짓점까지의 거리를 관찰합니다.
+                    </p>
+                    <div class="card-action">
+                        출시 예정
+                    </div>
+                </div>
+            </div>
+
+            <!-- 카드 3: 무게중심 (Coming Soon) -->
+            <div class="card disabled" data-grade="grade2">
+                <div class="card-visual disabled-visual">
+                    <span>⚖️</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-tags">
+                        <span class="tag tag-grade2">중2-2 기하</span>
+                        <span class="tag tag-soon">준비 중</span>
+                    </div>
+                    <h2 class="card-title">삼각형의 중선과 무게중심 2:1 성질</h2>
+                    <p class="card-desc">
+                        세 중선의 교점인 무게중심을 구하고, 각 중선이 2:1로 내분되는 성질과 6개 삼각형의 넓이가 같아지는 원리를 실험합니다.
+                    </p>
+                    <div class="card-action">
+                        출시 예정
+                    </div>
+                </div>
+            </div>
+
+            <!-- 카드 4: 피타고라스 정리 (Coming Soon) -->
+            <div class="card disabled" data-grade="grade2">
+                <div class="card-visual disabled-visual">
+                    <span>🧩</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-tags">
+                        <span class="tag tag-grade2">중2-2 기하</span>
+                        <span class="tag tag-soon">준비 중</span>
+                    </div>
+                    <h2 class="card-title">피타고라스 정리 시각적 퍼즐 증명</h2>
+                    <p class="card-desc">
+                        유클리드 증명법과 바스카라 퍼즐을 통해 직각삼각형에서 a² + b² = c² 이 성립함을 눈으로 직접 맞춰보며 증명합니다.
+                    </p>
+                    <div class="card-action">
+                        출시 예정
+                    </div>
+                </div>
+            </div>
+
+            <!-- 카드 5: 중1 정다면체 (Coming Soon) -->
+            <div class="card disabled" data-grade="grade1">
+                <div class="card-visual disabled-visual">
+                    <span>🎲</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-tags">
+                        <span class="tag tag-grade2" style="background:#fef3c7; color:#b45309;">중1-2 입체도형</span>
+                        <span class="tag tag-soon">준비 중</span>
+                    </div>
+                    <h2 class="card-title">정다면체 3D 전개도 접고 펼치기</h2>
+                    <p class="card-desc">
+                        정사면체부터 정이십면체까지 5가지 정다면체의 전개도를 3차원 공간에서 접고 회전시키며 면, 모서리, 꼭짓점 수를 탐구합니다.
+                    </p>
+                    <div class="card-action">
+                        출시 예정
+                    </div>
+                </div>
+            </div>
+
+            <!-- 카드 6: 중3 원주각 (Coming Soon) -->
+            <div class="card disabled" data-grade="grade3">
+                <div class="card-visual disabled-visual">
+                    <span>🏹</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-tags">
+                        <span class="tag tag-grade2" style="background:#fce7f3; color:#be185d;">중3-2 원의 성질</span>
+                        <span class="tag tag-soon">준비 중</span>
+                    </div>
+                    <h2 class="card-title">원주각과 중심각의 관계 탐구</h2>
+                    <p class="card-desc">
+                        호에 대한 원주각을 원주 위에서 자유롭게 드래그하며 각도가 항상 일정하고 중심각의 1/2이 됨을 인터랙티브하게 확인합니다.
+                    </p>
+                    <div class="card-action">
+                        출시 예정
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>© Middle Math Lab | 중학교 수학 디지털 교보재 저장소</p>
+        <p style="margin-top: 6px;">Hosted on <a href="https://vercel.com" target="_blank">Vercel</a> • Managed with GitHub</p>
+    </footer>
+
+    <script>
+        function filterGrade(grade, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                if (grade === 'all' || card.dataset.grade === grade) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
